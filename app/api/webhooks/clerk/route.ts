@@ -2,6 +2,7 @@ import { Webhook } from 'svix'
 import { headers } from 'next/headers'
 import { WebhookEvent } from '@clerk/nextjs/server'
 import User from '@/lib/database/models/user.model'
+import { connectToDatabase } from '@/lib/database/mongoose'
 
 export async function POST(req: Request) {
 
@@ -52,6 +53,8 @@ export async function POST(req: Request) {
   const { id } = evt.data;
   const eventType = evt.type;
 
+  await connectToDatabase()
+
   if (eventType === "user.created") {
     const { email_addresses, first_name, last_name, username } = evt.data
     const user = new User({
@@ -62,7 +65,7 @@ export async function POST(req: Request) {
       lastName: last_name
     })
     try {
-      await user.create();
+      await user.save();
 
     } catch (error) {
       console.error("Error saving user to MongoDB:", error)
