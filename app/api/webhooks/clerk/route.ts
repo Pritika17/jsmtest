@@ -1,8 +1,15 @@
 import { Webhook } from 'svix'
 import { headers } from 'next/headers'
 import { WebhookEvent } from '@clerk/nextjs/server'
-import User from '@/lib/database/models/user.model'
-import { connectToDatabase } from '@/lib/database/mongoose'
+import { MongoClient } from 'mongodb'
+
+interface User {
+  clerkId?: string;
+  email: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+}
 
 export async function POST(req: Request) {
 
@@ -53,24 +60,39 @@ export async function POST(req: Request) {
   const { id } = evt.data;
   const eventType = evt.type;
 
-  await connectToDatabase()
+  const uri = process.env.MONGODB_URL
 
-  if (eventType === "user.created") {
-    const { email_addresses, first_name, last_name, username } = evt.data
-    const user = new User({
-      clerkId: id,
-      email: email_addresses[0].email_address,
-      username: username!,
-      firstName: first_name,
-      lastName: last_name
-    })
-    try {
-      await user.save();
+  if (!uri) {
+    throw new Error("Please add MONGODB_URL to .env or .env.local")
+  }
 
-    } catch (error) {
-      console.error("Error saving user to MongoDB:", error)
-      return new Response("Error occured", { status: 500 })
+
+  const client = new MongoClient(uri)
+
+  try {
+    await client.connect();
+    console.log("Connected to DB");
+    const database = client.db('ytscriper');
+    const collection = database.collection('users');
+
+    if (eventType === "user.created") {
+      const { email_addresses, first_name, last_name, username } = evt.data;
+      const user: User = {
+        clerkId: id,
+        email: email_addresses[0].email_address,
+        username: username!,
+        firstName: first_name,
+        lastName: last_name,
+      };
+      await collection.insertOne(user)
     }
+  } catch (error) {
+    console.error('Error interacting with MongoDB:', error);
+    return new Response('Error occurred', {
+      status: 500,
+    });
+  } finally {
+    await client.close()
   }
 
   console.log(`Webhook with and ID of ${id} and type of ${eventType}`)
