@@ -9,6 +9,7 @@ interface User {
   username: string;
   firstName: string;
   lastName: string;
+  createdAt: Date;
 }
 
 export async function POST(req: Request) {
@@ -76,13 +77,16 @@ export async function POST(req: Request) {
     const collection = database.collection('users');
 
     if (eventType === "user.created") {
-      const { email_addresses, first_name, last_name, username } = evt.data;
+      const { email_addresses, first_name, last_name, username, created_at } = evt.data;
+      const timestamp = evt.data.created_at
+      const createdAt = new Date(timestamp)
       const user: User = {
         clerkId: id,
         email: email_addresses[0].email_address,
         username: username!,
         firstName: first_name,
         lastName: last_name,
+        createdAt: createdAt
       };
       await collection.insertOne(user)
     }
