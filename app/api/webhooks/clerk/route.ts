@@ -1,10 +1,9 @@
 import { Webhook } from 'svix'
 import { headers } from 'next/headers'
 import { WebhookEvent } from '@clerk/nextjs/server'
-import { MongoClient, ObjectId } from 'mongodb'
+import { MongoClient } from 'mongodb'
 
 interface User {
-  _id?: ObjectId;
   clerkId?: string;
   email: string;
   username: string;
@@ -89,12 +88,11 @@ export async function POST(req: Request) {
         lastName: last_name,
         createdAt: createdAt
       };
-      user._id = new ObjectId(user.clerkId);
       await collection.insertOne(user)
     }
     if (eventType === "user.deleted") {
-      const { id } = evt.data
-      await collection.deleteOne({ _id: new ObjectId(id) })
+      const { id } = evt.data;
+      await collection.deleteOne({ clerkId: id });
     }
   } catch (error) {
     console.error('Error interacting with MongoDB:', error);
